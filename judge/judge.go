@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func StartJudge() {
+func StartJudge(local bool) {
 	router := gin.Default()
 
 	router.POST("/judge", func(c *gin.Context) {

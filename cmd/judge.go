@@ -12,10 +12,14 @@ var judgeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			if args[0] == "start" {
-				judge.StartJudge()
+				judge.StartJudge(false)
+				return
+			} else if args[0] == "local" {
+				judge.StartJudge(true)
 				return
 			}
 		}
 		fmt.Println("To start the Judge server, type start")
+		fmt.Println("To start the Judge server locally, type local")
 	},
 }

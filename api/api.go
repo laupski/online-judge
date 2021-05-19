@@ -19,11 +19,21 @@ const (
 	dbname   = "online-judge"
 )
 
-func StartAPI() {
-	time.Sleep(5 * time.Second)
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+func StartAPI(local bool) {
+	var psqlInfo string
+	if local == true {
+		fmt.Printf("Running in LOCAL mode, connecting to localhost...\n")
+		psqlInfo = fmt.Sprintf("host=%s port=%d user=%s "+
+			"password=%s dbname=%s sslmode=disable",
+			"localhost", port, user, password, dbname)
+
+	} else {
+		time.Sleep(5 * time.Second)
+		fmt.Printf("Running in PRODUCTION mode, connecting to %v...\n", host)
+		psqlInfo = fmt.Sprintf("host=%s port=%d user=%s "+
+			"password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+	}
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
