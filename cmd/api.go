@@ -10,7 +10,6 @@ var apiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "Starts the online-judge API server.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(len(args))
 		if len(args) == 1 {
 			if args[0] == "start" {
 				api.StartAPI(false)

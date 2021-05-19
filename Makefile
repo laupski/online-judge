@@ -15,3 +15,6 @@ pgadmin:
 postgres:
 	docker build ./database -t online-judge-database
 	docker run --rm -d --name online-judge-database -p 5432:5432 online-judge-database
+
+debug:
+	go build -gcflags="all=-N -l"
