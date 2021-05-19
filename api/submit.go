@@ -6,7 +6,8 @@ import (
 )
 
 func postSubmission(c *gin.Context) {
-	fmt.Println("Posting submission...")
+	fmt.Println("Running submission...")
+	c.Param("question")
 }
 
 func checkAnswer(key, output string) bool {

@@ -22,7 +22,3 @@ func StartJudge(local bool) {
 	fmt.Println("Now serving the online-judge Judge server on port 1338")
 	log.Fatal(judge.ListenAndServe())
 }
-
-func postSubmission(c *gin.Context) {
-	fmt.Println("Compiling and running code")
-}

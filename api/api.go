@@ -55,10 +55,10 @@ func StartAPI(local bool) {
 	router.GET("api/questions", func(c *gin.Context) {
 		getQuestionList(c, db)
 	})
-	router.GET("/api/question/:key", func(c *gin.Context) {
+	router.GET("api/question/:key", func(c *gin.Context) {
 		getQuestion(c, db)
 	})
-	router.POST("/api/submit/:key", func(c *gin.Context) {
+	router.POST("api/submit/:key", func(c *gin.Context) {
 		postSubmission(c)
 	})
 
