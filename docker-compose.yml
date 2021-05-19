@@ -1,0 +1,13 @@
+version: '3'
+services:
+  database:
+    image: online-judge-database
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5433:80"
+    depends_on:
+      - db
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
