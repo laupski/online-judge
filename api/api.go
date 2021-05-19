@@ -19,9 +19,9 @@ func StartAPI() {
 		postSubmission(c)
 	})
 
-	api := &http.Server {
+	api := &http.Server{
 		Handler: router,
-		Addr: ":1337",
+		Addr:    ":1337",
 	}
 
 	fmt.Println("Now serving the online-judge API server on port 1337")

@@ -10,13 +10,13 @@ import (
 func StartJudge() {
 	router := gin.Default()
 
-	router.POST("/", func(c *gin.Context) {
+	router.POST("/judge", func(c *gin.Context) {
 		postSubmission(c)
 	})
 
-	judge := &http.Server {
+	judge := &http.Server{
 		Handler: router,
-		Addr: ":1338",
+		Addr:    ":1338",
 	}
 
 	fmt.Println("Now serving the online-judge Judge server on port 1338")
@@ -24,5 +24,5 @@ func StartJudge() {
 }
 
 func postSubmission(c *gin.Context) {
-	fmt.Println("Posting submission")
+	fmt.Println("Compiling and running code")
 }

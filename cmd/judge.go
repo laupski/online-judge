@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/laupski/online-judge/judge"
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +12,7 @@ var judgeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			if args[0] == "start" {
-
+				judge.StartJudge()
 				return
 			}
 		}
