@@ -4,6 +4,7 @@ CREATE TABLE public.questions
 (
     uuid uuid NOT NULL DEFAULT uuid_generate_v1(),
     key text COLLATE pg_catalog."default",
+    number SERIAL,
     title text COLLATE pg_catalog."default",
     question text COLLATE pg_catalog."default",
     CONSTRAINT questions_pkey PRIMARY KEY (uuid)

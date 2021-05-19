@@ -2,6 +2,7 @@ all: build
 
 build:
 	docker build ./database -t online-judge-database
+	docker build . -t online-judge-web
 
 clean:
 	-docker stop online-judge-database

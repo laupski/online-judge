@@ -2,6 +2,8 @@ version: '3'
 services:
   database:
     image: online-judge-database
+    ports:
+      - "5432:5432"
   api:
     image: online-judge-web
     command: ["api", "start"]
