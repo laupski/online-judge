@@ -2,6 +2,20 @@ version: '3'
 services:
   database:
     image: online-judge-database
+  api:
+    image: online-judge-web
+    command: ["api", "start"]
+    ports:
+      - "1337:1337"
+    depends_on:
+      - database
+  judge:
+    image: online-judge-web
+    command: ["judge", "start"]
+    ports:
+      - "1338:1338"
+    depends_on:
+      - database
   pgadmin:
     image: dpage/pgadmin4
     ports:
