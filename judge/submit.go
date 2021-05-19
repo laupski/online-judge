@@ -51,8 +51,8 @@ func postSubmission(c *gin.Context) {
 	fmt.Println("Running code...")
 	results, err := runSubmission(submission)
 	c.JSON(http.StatusOK, gin.H{
-		"error": err,
-		"results" : results,
+		"error":   err,
+		"results": results,
 	})
 }
 

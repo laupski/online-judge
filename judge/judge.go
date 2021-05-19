@@ -10,6 +10,11 @@ import (
 func StartJudge(local bool) {
 	router := gin.Default()
 
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, &gin.H{
+			"health": "good",
+		})
+	})
 	router.POST("/judge", func(c *gin.Context) {
 		postSubmission(c)
 	})
