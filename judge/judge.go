@@ -5,7 +5,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"os"
 )
+
+const sandboxDirectory = "./sandbox/"
 
 func StartJudge(local bool) {
 	router := gin.Default()
@@ -18,6 +21,16 @@ func StartJudge(local bool) {
 	router.POST("/judge", func(c *gin.Context) {
 		postSubmission(c)
 	})
+
+	if _, err := os.Stat(sandboxDirectory); os.IsNotExist(err) {
+		fmt.Printf("Creating sandbox directory in %v\n", sandboxDirectory)
+		err = os.Mkdir(sandboxDirectory, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		fmt.Printf("Sandbox directory already created in %v\n", sandboxDirectory)
+	}
 
 	judge := &http.Server{
 		Handler: router,
