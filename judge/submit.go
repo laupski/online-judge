@@ -58,7 +58,7 @@ func postSubmission(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"stdout": stdout,
 		"stderr": stderr,
-		"error":  err,
+		"error":  err.Error(),
 	})
 
 }
@@ -79,6 +79,8 @@ func compileSubmission(s submissionRequest) (string, string, error) {
 		return "", "", err
 	}
 	defer os.Remove(tmpfile.Name())
+	defer tmpfile.Close()
+
 	_, err = tmpfile.Write([]byte(s.Code))
 	if err != nil {
 		return "", "", err
@@ -100,10 +102,8 @@ func compileSubmission(s submissionRequest) (string, string, error) {
 	}()
 	select {
 	case res := <-c1:
-		tmpfile.Close()
 		return res.stdout, res.stderr, err
 	case <-time.After(timeout * time.Second):
-		tmpfile.Close()
 		return "", "", errors.New(fmt.Sprintf("timeout after %v seconds", timeout))
 	}
 }
