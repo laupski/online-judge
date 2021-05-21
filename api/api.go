@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	"github.com/streadway/amqp"
 	"log"
 	"net/http"
 	"time"
@@ -20,6 +21,34 @@ const (
 )
 
 func StartAPI(local bool) {
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	failOnError(err, "Failed to connect to RabbitMQ")
+	defer conn.Close()
+	ch, err := conn.Channel()
+	failOnError(err, "Failed to open a channel")
+	defer ch.Close()
+	q, err := ch.QueueDeclare(
+		"hello", // name
+		false,   // durable
+		false,   // delete when unused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
+	body := "Hello World!"
+	err = ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(body),
+		})
+	failOnError(err, "Failed to publish a message")
+
 	var psqlInfo string
 	if local == true {
 		fmt.Printf("Running in LOCAL mode, connecting to localhost...\n")
@@ -74,4 +103,10 @@ func StartAPI(local bool) {
 
 	fmt.Println("Now serving the online-judge API server on port 1337")
 	log.Fatal(api.ListenAndServe())
+}
+
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	}
 }

@@ -1,12 +1,9 @@
 package judge
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"time"
@@ -22,45 +19,20 @@ type outputs struct {
 }
 
 type submissionRequest struct {
-	Language string `json:"language"`
-	Code     string `json:"code"`
+	Language string
+	Code     string
 }
 
-func postSubmission(c *gin.Context) {
-	var submission submissionRequest
-	body := c.Request.Body
-	x, _ := ioutil.ReadAll(body)
-	err := json.Unmarshal(x, &submission)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Bad submission",
-		})
-		return
+func postSubmission() {
+	submission := submissionRequest{
+		Language: "",
+		Code:     "",
 	}
-
-	if submission.Language == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Language cannot be empty",
-		})
-		return
-	}
-	if submission.Code == "" {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "Submission cannot be empty",
-		})
-		return
-	}
-
 	fmt.Println("Running code...")
-	stdout, stderr, err := compileSubmission(submission)
-
-	c.JSON(http.StatusOK, gin.H{
-		"stdout": stdout,
-		"stderr": stderr,
-		"error":  err.Error(),
-	})
-
+	stdout, stderr, _ := compileSubmission(submission)
+	_ = stdout
+	_ = stderr
+	return
 }
 
 func compileSubmission(s submissionRequest) (string, string, error) {

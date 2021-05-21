@@ -11,13 +11,12 @@ services:
       - "1337:1337"
     depends_on:
       - database
+      - messaging
   judge:
     image: online-judge-web
     command: ["judge", "start"]
-    ports:
-      - "1338:1338"
     depends_on:
-      - database
+      - messaging
   pgadmin:
     image: dpage/pgadmin4
     ports:
@@ -27,3 +26,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
+  messaging:
+    image: online-judge-messaging
+    ports:
+      - "15672:15672"
+      - "5672:5672"

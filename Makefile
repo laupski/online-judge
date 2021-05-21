@@ -3,10 +3,12 @@ all: build
 build:
 	docker build ./database -t online-judge-database
 	docker build . -t online-judge-web
+	docker build ./messaging -t online-judge-messaging
 
 clean:
 	-docker stop online-judge-database
 	-docker stop pgadmin
+	-docker stop online-judge-messaging
 
 pgadmin:
 	# Open up http://127.0.0.1:5433 to access pgAdmin
@@ -15,6 +17,10 @@ pgadmin:
 postgres:
 	docker build ./database -t online-judge-database
 	docker run --rm -d --name online-judge-database -p 5432:5432 online-judge-database
+
+rabbit:
+	docker build ./messaging -t online-judge-messaging
+	docker run --rm -d -p 15672:15672 -p 5672:5672 --name online-judge-rabbitmq online-judge-messaging
 
 debug:
 	go build -gcflags="all=-N -l"
