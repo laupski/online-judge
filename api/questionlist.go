@@ -1,7 +1,7 @@
 package api
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -17,9 +17,9 @@ type getQuestionListRow struct {
 	Title  string `json:"title"`
 }
 
-func getQuestionList(c *gin.Context, db *sql.DB) {
+func getQuestionList(c *gin.Context) {
 	fmt.Println("Getting question list...")
-	rows, err := db.Query("SELECT key, number, title FROM public.questions ORDER BY number")
+	rows, err := PostgresConnection.Query(context.Background(), "SELECT key, number, title FROM public.questions ORDER BY number")
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{

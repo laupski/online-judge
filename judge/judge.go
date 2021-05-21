@@ -7,9 +7,17 @@ import (
 	"os"
 )
 
-const sandboxDirectory = "./sandbox/"
+const (
+	sandboxDirectory = "./sandbox/"
+	rabbit           = "amqp://guest:guest@messaging:5672/"
+)
+
+var RabbitMQConnection *amqp.Connection
 
 func StartJudge(local bool) {
+	RabbitMQConnection = connectToRabbitMQ(local)
+	defer RabbitMQConnection.Close()
+
 	if _, err := os.Stat(sandboxDirectory); os.IsNotExist(err) {
 		fmt.Printf("Creating sandbox directory in %v\n", sandboxDirectory)
 		err = os.Mkdir(sandboxDirectory, 0777)
@@ -20,13 +28,28 @@ func StartJudge(local bool) {
 		fmt.Printf("Sandbox directory already created in %v\n", sandboxDirectory)
 	}
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
-	ch, err := conn.Channel()
+	ch, err := RabbitMQConnection.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
+}
 
+func connectToRabbitMQ(local bool) *amqp.Connection {
+	fmt.Println("Attempting to connect to rabbitmq")
+	var connectionString string
+	if local {
+		fmt.Printf("Running in LOCAL mode, connecting to localhost...\n")
+		connectionString = "amqp://guest:guest@localhost:5672/"
+	} else {
+		fmt.Printf("Running in PRODUCTION mode, connecting to messaging...\n")
+		connectionString = rabbit
+	}
+
+	conn, err := amqp.Dial(connectionString)
+	failOnError(err, "Failed to connect to RabbitMQ")
+	fmt.Println("Successfully connected!")
+	return conn
+
+	/* TODO implement messaging
 	q, err := ch.QueueDeclare(
 		"hello", // name
 		false,   // durable
@@ -56,7 +79,7 @@ func StartJudge(local bool) {
 	}()
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	<-forever
+	<-forever*/
 }
 
 func failOnError(err error, msg string) {

@@ -18,7 +18,8 @@ postgres:
 	docker build ./database -t online-judge-database
 	docker run --rm -d --name online-judge-database -p 5432:5432 online-judge-database
 
-rabbit:
+rabbitmq:
+	# Open up http://127.0.0.1:15672 to view RabbitMQ
 	docker build ./messaging -t online-judge-messaging
 	docker run --rm -d -p 15672:15672 -p 5672:5672 --name online-judge-rabbitmq online-judge-messaging
 

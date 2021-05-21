@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 services:
   database:
     image: online-judge-database
@@ -6,7 +6,7 @@ services:
       - "5432:5432"
   api:
     image: online-judge-web
-    command: ["api", "start"]
+    command: ["./scripts/wait-for-it.sh", "database:5432", "--", "online-judge", "api", "start"]
     ports:
       - "1337:1337"
     depends_on:
@@ -14,7 +14,7 @@ services:
       - messaging
   judge:
     image: online-judge-web
-    command: ["judge", "start"]
+    command: ["./scripts/wait-for-it.sh", "messaging:5672", "--", "online-judge", "judge", "start"]
     depends_on:
       - messaging
   pgadmin:

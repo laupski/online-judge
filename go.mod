@@ -5,7 +5,8 @@ go 1.16
 require (
 	github.com/gin-contrib/static v0.0.1
 	github.com/gin-gonic/gin v1.7.1
-	github.com/lib/pq v1.10.2
+	github.com/jackc/pgx/v4 v4.11.0
+	github.com/lib/pq v1.10.2 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.6.1 // indirect
