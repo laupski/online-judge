@@ -3,13 +3,14 @@ package judge
 import (
 	"fmt"
 	"github.com/laupski/online-judge/internal"
+	"github.com/streadway/amqp"
 	"log"
 	"os"
 )
 
 const sandboxDirectory = "./sandbox/"
 
-var RabbitMQConnection internal.RabbitMQ
+var RabbitMQ internal.RabbitMQ
 
 func init() {
 	if _, err := os.Stat(sandboxDirectory); os.IsNotExist(err) {
@@ -24,20 +25,20 @@ func init() {
 }
 
 func StartJudge(local bool) {
-	RabbitMQConnection = internal.NewRabbitMQ(local)
-	defer RabbitMQConnection.Connection.Close()
-	RabbitMQConnection.CreateSubmissionChannel()
-	defer RabbitMQConnection.Channel.Close()
-	RabbitMQConnection.DeclareQueue()
+	RabbitMQ = internal.NewRabbitMQ(local)
+	defer RabbitMQ.Connection.Close()
+	RabbitMQ.CreateSubmissionChannel()
+	defer RabbitMQ.Channel.Close()
+	RabbitMQ.DeclareQueue()
 
-	msgs, err := RabbitMQConnection.Channel.Consume(
-		RabbitMQConnection.Queue.Name, // queue
-		"",                            // consumer
-		true,                          // auto-ack
-		false,                         // exclusive
-		false,                         // no-local
-		false,                         // no-wait
-		nil,                           // args
+	msgs, err := RabbitMQ.Channel.Consume(
+		RabbitMQ.Queue.Name, // queue
+		"",                  // consumer
+		true,                // auto-ack
+		false,               // exclusive
+		false,               // no-local
+		false,               // no-wait
+		nil,                 // args
 	)
 	internal.FailOnError(err, "Failed to register a consumer")
 
@@ -46,6 +47,21 @@ func StartJudge(local bool) {
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
+			compileSubmission(d.Body)
+
+			err = RabbitMQ.Channel.Publish(
+				"",                  // exchange
+				RabbitMQ.Queue.Name, // routing key
+				false,               // mandatory
+				false,               // immediate
+				amqp.Publishing{
+					ContentType:   "text/plain",
+					CorrelationId: d.CorrelationId,
+					Body:          []byte("success"),
+				})
+			internal.FailOnError(err, "Failed to publish a message")
+
+			d.Ack(false)
 		}
 	}()
 

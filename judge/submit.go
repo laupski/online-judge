@@ -1,6 +1,7 @@
 package judge
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -23,22 +24,24 @@ type submissionRequest struct {
 	Code     string
 }
 
-func postSubmission() {
-	submission := submissionRequest{
-		Language: "",
-		Code:     "",
+func compileSubmission(body []byte) (string, string, error) {
+	fmt.Println("Received message from Queue")
+	var submission submissionRequest
+	err := json.Unmarshal(body, &submission)
+	if err != nil {
+		return "", "", errors.New("Bad submission")
 	}
-	fmt.Println("Running code...")
-	stdout, stderr, _ := compileSubmission(submission)
-	_ = stdout
-	_ = stderr
-	return
-}
 
-func compileSubmission(s submissionRequest) (string, string, error) {
+	if submission.Language == "" {
+		return "", "", errors.New("Language cannot be empty")
+	}
+	if submission.Code == "" {
+		return "", "", errors.New("Submission cannot be empty")
+	}
+
 	found := false
 	for _, v := range supportedLanguages {
-		if v == s.Language {
+		if v == submission.Language {
 			found = true
 		}
 	}
@@ -53,7 +56,7 @@ func compileSubmission(s submissionRequest) (string, string, error) {
 	defer os.Remove(tmpfile.Name())
 	defer tmpfile.Close()
 
-	_, err = tmpfile.Write([]byte(s.Code))
+	_, err = tmpfile.Write([]byte(submission.Code))
 	if err != nil {
 		return "", "", err
 	}

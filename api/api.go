@@ -7,7 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 	"github.com/laupski/online-judge/internal"
+	"github.com/streadway/amqp"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -16,8 +18,14 @@ const postgres = "postgres://postgres:postgres@database:5432/online-judge"
 
 var PostgresConnection *pgx.Conn
 var RabbitMQ internal.RabbitMQ
+var Msgs <-chan amqp.Delivery
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 func StartAPI(local bool) {
+	var err error
 	PostgresConnection = connectToPostgres(local)
 	defer PostgresConnection.Close(context.Background())
 	RabbitMQ = internal.NewRabbitMQ(local)
@@ -25,6 +33,15 @@ func StartAPI(local bool) {
 	RabbitMQ.CreateSubmissionChannel()
 	defer RabbitMQ.Channel.Close()
 	RabbitMQ.DeclareQueue()
+	Msgs, err = RabbitMQ.Channel.Consume(
+		RabbitMQ.Queue.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil)
+	internal.FailOnError(err, "Failed to register a consumer")
 
 	router := gin.Default()
 	router.Use(static.Serve("/", static.LocalFile("./frontend/public", true)))
