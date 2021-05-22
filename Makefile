@@ -23,5 +23,9 @@ rabbitmq:
 	docker build ./messaging -t online-judge-messaging
 	docker run --rm -d -p 15672:15672 -p 5672:5672 --name online-judge-rabbitmq online-judge-messaging
 
+judge-rce:
+	docker build . -t online-judge-web
+	docker run --rm -d --name online-judge-rce online-judge-web online-judge judge local
+
 debug:
 	go build -gcflags="all=-N -l"

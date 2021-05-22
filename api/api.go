@@ -6,25 +6,25 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
-	"github.com/streadway/amqp"
+	"github.com/laupski/online-judge/internal"
 	"log"
 	"net/http"
 	"time"
 )
 
-const (
-	postgres = "postgres://postgres:postgres@database:5432/online-judge"
-	rabbit   = "amqp://guest:guest@messaging:5672/"
-)
+const postgres = "postgres://postgres:postgres@database:5432/online-judge"
 
 var PostgresConnection *pgx.Conn
-var RabbitMQConnection *amqp.Connection
+var RabbitMQ internal.RabbitMQ
 
 func StartAPI(local bool) {
 	PostgresConnection = connectToPostgres(local)
 	defer PostgresConnection.Close(context.Background())
-	RabbitMQConnection = connectToRabbitMQ(local)
-	defer RabbitMQConnection.Close()
+	RabbitMQ = internal.NewRabbitMQ(local)
+	defer RabbitMQ.Connection.Close()
+	RabbitMQ.CreateSubmissionChannel()
+	defer RabbitMQ.Channel.Close()
+	RabbitMQ.DeclareQueue()
 
 	router := gin.Default()
 	router.Use(static.Serve("/", static.LocalFile("./frontend/public", true)))
@@ -52,49 +52,6 @@ func StartAPI(local bool) {
 	log.Fatal(api.ListenAndServe())
 }
 
-func connectToRabbitMQ(local bool) *amqp.Connection {
-	fmt.Println("Attempting to connect to rabbitmq")
-	var connectionString string
-	if local {
-		fmt.Printf("Running in LOCAL mode, connecting to localhost...\n")
-		connectionString = "amqp://guest:guest@localhost:5672/"
-	} else {
-		fmt.Printf("Running in PRODUCTION mode, connecting to messaging...\n")
-		connectionString = rabbit
-	}
-
-	conn, err := amqp.Dial(connectionString)
-	failOnError(err, "Failed to connect to RabbitMQ")
-	fmt.Println("Successfully connected!")
-	return conn
-
-	/* TODO implement messaging
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
-	q, err := ch.QueueDeclare(
-		"hello", // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
-
-	body := "Hello World!"
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
-		})
-	failOnError(err, "Failed to publish a message")*/
-}
-
 func connectToPostgres(local bool) *pgx.Conn {
 	fmt.Println("Attempting to connect to postgres")
 	var connectionString string
@@ -108,13 +65,7 @@ func connectToPostgres(local bool) *pgx.Conn {
 	}
 
 	conn, err := pgx.Connect(context.Background(), connectionString)
-	failOnError(err, "Failed to connect to postgres")
+	internal.FailOnError(err, "Failed to connect to postgres")
 	fmt.Println("Successfully connected!")
 	return conn
-}
-
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	}
 }
