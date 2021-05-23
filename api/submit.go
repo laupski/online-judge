@@ -46,8 +46,8 @@ func postSubmission(c *gin.Context) {
 		amqp.Publishing{
 			ContentType:   "application/json",
 			CorrelationId: corrId,
-			//ReplyTo:       "requests",
-			Body: bodyBytes,
+			ReplyTo:       "responses",
+			Body:          bodyBytes,
 		})
 	internal.FailOnError(err, "Failed to publish a message")
 
@@ -61,6 +61,10 @@ func postSubmission(c *gin.Context) {
 				var response SubmissionResponse
 				_ = json.Unmarshal(d.Body, &response)
 				c.JSON(http.StatusOK, response)
+				err = d.Ack(false)
+				if err != nil {
+					fmt.Println(err)
+				}
 				c1 <- true
 			}
 		}

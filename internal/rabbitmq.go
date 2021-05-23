@@ -65,7 +65,7 @@ func (rmq *RabbitMQ) DeclareAndBindQueue(n string) {
 	)
 	FailOnError(err, "Failed to declare a queue")
 	err = rmq.Channel.QueueBind(
-		rmq.Queue.Name,
+		n,
 		n,
 		"submissions",
 		false,
@@ -77,7 +77,7 @@ func (rmq *RabbitMQ) SetConsumer(k string) <-chan amqp.Delivery {
 	channel, err := rmq.Channel.Consume(
 		k,
 		"",
-		true,
+		false,
 		false,
 		false,
 		false,

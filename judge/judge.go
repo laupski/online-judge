@@ -41,8 +41,11 @@ func StartJudge(local bool) {
 			log.Printf("Received a message: %s", d.Body)
 			response := compileSubmission(d.Body)
 			bodyBytes, _ := json.Marshal(response)
-
-			err := RabbitMQ.Channel.Publish(
+			err := d.Ack(false)
+			if err != nil {
+				fmt.Println(err)
+			}
+			err = RabbitMQ.Channel.Publish(
 				"submissions", // exchange
 				"responses",   // routing key
 				false,         // mandatory
@@ -51,10 +54,10 @@ func StartJudge(local bool) {
 					ContentType:   "application/json",
 					CorrelationId: d.CorrelationId,
 					Body:          bodyBytes,
+					//ReplyTo:       "responses",
 				})
 			internal.FailOnError(err, "Failed to publish a message")
 
-			d.Ack(false)
 		}
 	}()
 
