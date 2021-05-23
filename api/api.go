@@ -18,30 +18,21 @@ const postgres = "postgres://postgres:postgres@database:5432/online-judge"
 
 var PostgresConnection *pgx.Conn
 var RabbitMQ internal.RabbitMQ
-var Msgs <-chan amqp.Delivery
+var CompiledResults <-chan amqp.Delivery
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
 func StartAPI(local bool) {
-	var err error
 	PostgresConnection = connectToPostgres(local)
 	defer PostgresConnection.Close(context.Background())
 	RabbitMQ = internal.NewRabbitMQ(local)
 	defer RabbitMQ.Connection.Close()
 	RabbitMQ.CreateSubmissionChannel()
 	defer RabbitMQ.Channel.Close()
-	RabbitMQ.DeclareQueue()
-	Msgs, err = RabbitMQ.Channel.Consume(
-		RabbitMQ.Queue.Name,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil)
-	internal.FailOnError(err, "Failed to register a consumer")
+	RabbitMQ.DeclareAndBindQueue("requests")
+	CompiledResults = RabbitMQ.SetConsumer("responses")
 
 	router := gin.Default()
 	router.Use(static.Serve("/", static.LocalFile("./frontend/public", true)))

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/laupski/online-judge/internal"
@@ -9,70 +10,110 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
-type submissionRequest struct {
+type SubmissionRequest struct {
 	Language string `json:"language"`
 	Code     string `json:"code"`
 }
 
-type submissionResponse struct {
-	Response string `json:"submission"`
+type SubmissionResponse struct {
+	StdOut  string `json:"stdout"`
+	StdErr  string `json:"stderr"`
+	Correct bool   `json:"correct"`
+	Error   string `json:"error"`
 }
+
+var supportedLanguages = []string{"go"}
 
 func postSubmission(c *gin.Context) {
 	fmt.Println("Routing submission...")
-	c.Param("question")
-	var submission submissionRequest
-	body := c.Request.Body
-	bodyBytes, _ := ioutil.ReadAll(body)
-	err := json.Unmarshal(bodyBytes, &submission)
+	_ = c.Param("question")
+	bodyBytes, _ := ioutil.ReadAll(c.Request.Body)
+	_, err := CheckJSONSubmissionRequest(bodyBytes)
 	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Bad submission",
-		})
-		return
-	}
-
-	if submission.Language == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Language cannot be empty",
-		})
-		return
-	}
-	if submission.Code == "" {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"error": "Submission cannot be empty",
-		})
+		c.JSON(http.StatusBadRequest, NewSubmissionResponse("", "", err.Error()))
 		return
 	}
 
 	corrId := randomString(32)
-
 	err = RabbitMQ.Channel.Publish(
-		"",                  // exchange
-		RabbitMQ.Queue.Name, // routing key
-		false,               // mandatory
-		false,               // immediate
+		"submissions", // exchange
+		"requests",    // routing key
+		false,         // mandatory
+		false,         // immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
 			CorrelationId: corrId,
-			ReplyTo:       RabbitMQ.Queue.Name,
-			Body:          bodyBytes,
+			//ReplyTo:       "requests",
+			Body: bodyBytes,
 		})
 	internal.FailOnError(err, "Failed to publish a message")
 
-	for d := range Msgs {
-		if corrId == d.CorrelationId {
-			fmt.Println("Successfully received an answer from the Judge server!")
-			break
+	// Create a timeout to prevent hanging resources
+	c1 := make(chan bool, 1)
+	go func() {
+		for d := range CompiledResults {
+			if corrId == d.CorrelationId {
+				fmt.Println("Successfully received an answer from the Judge server!")
+				//fmt.Println(d.Body)
+				var response SubmissionResponse
+				_ = json.Unmarshal(d.Body, &response)
+				c.JSON(http.StatusOK, response)
+				c1 <- true
+			}
 		}
+	}()
+	select {
+	case <-c1:
+		return
+	case <-time.After(internal.Timeout * time.Second):
+		c.JSON(http.StatusInternalServerError, SubmissionResponse{
+			StdOut:  "",
+			StdErr:  "",
+			Correct: false,
+			Error:   "timeout"})
+		return
 	}
-
-	c.JSON(http.StatusOK, submissionResponse{Response: "Successfully submitted"})
 }
 
+func CheckJSONSubmissionRequest(bodyBytes []byte) (SubmissionRequest, error) {
+	var submission SubmissionRequest
+	err := json.Unmarshal(bodyBytes, &submission)
+	if err != nil {
+		return submission, errors.New("bad submission")
+	}
+	if submission.Language == "" {
+		return submission, errors.New("language cannot be empty")
+	}
+	if submission.Code == "" {
+		return submission, errors.New("submission cannot be empty")
+	}
+
+	found := false
+	for _, v := range supportedLanguages {
+		if v == submission.Language {
+			found = true
+		}
+	}
+	if found == false {
+		return submission, errors.New("unsupported language requested")
+	}
+
+	return submission, nil
+}
+
+func NewSubmissionResponse(stdout string, stderr string, err string) SubmissionResponse {
+	return SubmissionResponse{
+		stdout,
+		stderr,
+		false,
+		err,
+	}
+}
+
+// Check redis then postgres for the answer
 func checkAnswer(key, output string) bool {
 	return false
 }

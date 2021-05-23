@@ -1,6 +1,7 @@
 package judge
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/laupski/online-judge/internal"
 	"github.com/streadway/amqp"
@@ -11,6 +12,7 @@ import (
 const sandboxDirectory = "./sandbox/"
 
 var RabbitMQ internal.RabbitMQ
+var Deliveries <-chan amqp.Delivery
 
 func init() {
 	if _, err := os.Stat(sandboxDirectory); os.IsNotExist(err) {
@@ -29,35 +31,26 @@ func StartJudge(local bool) {
 	defer RabbitMQ.Connection.Close()
 	RabbitMQ.CreateSubmissionChannel()
 	defer RabbitMQ.Channel.Close()
-	RabbitMQ.DeclareQueue()
+	RabbitMQ.DeclareAndBindQueue("responses")
+	Deliveries = RabbitMQ.SetConsumer("requests")
 
-	msgs, err := RabbitMQ.Channel.Consume(
-		RabbitMQ.Queue.Name, // queue
-		"",                  // consumer
-		true,                // auto-ack
-		false,               // exclusive
-		false,               // no-local
-		false,               // no-wait
-		nil,                 // args
-	)
-	internal.FailOnError(err, "Failed to register a consumer")
-
+	//TODO figure out why the channel keeps closing after processing
 	forever := make(chan bool)
-
 	go func() {
-		for d := range msgs {
+		for d := range Deliveries {
 			log.Printf("Received a message: %s", d.Body)
-			compileSubmission(d.Body)
+			response := compileSubmission(d.Body)
+			bodyBytes, _ := json.Marshal(response)
 
-			err = RabbitMQ.Channel.Publish(
-				"",                  // exchange
-				RabbitMQ.Queue.Name, // routing key
-				false,               // mandatory
-				false,               // immediate
+			err := RabbitMQ.Channel.Publish(
+				"submissions", // exchange
+				"responses",   // routing key
+				false,         // mandatory
+				false,         // immediate
 				amqp.Publishing{
-					ContentType:   "text/plain",
+					ContentType:   "application/json",
 					CorrelationId: d.CorrelationId,
-					Body:          []byte("success"),
+					Body:          bodyBytes,
 				})
 			internal.FailOnError(err, "Failed to publish a message")
 

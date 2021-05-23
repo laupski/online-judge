@@ -41,18 +41,47 @@ func NewRabbitMQ(local bool) RabbitMQ {
 func (rmq *RabbitMQ) CreateSubmissionChannel() {
 	channel, err := rmq.Connection.Channel()
 	FailOnError(err, "Failed to open a channel")
+	err = channel.ExchangeDeclare(
+		"submissions",
+		"direct",
+		false,
+		false,
+		false,
+		false,
+		nil)
+	FailOnError(err, "Failed to declare an exchange on the channel")
 	rmq.Channel = channel
 }
 
-func (rmq *RabbitMQ) DeclareQueue() {
+func (rmq *RabbitMQ) DeclareAndBindQueue(n string) {
 	var err error
 	rmq.Queue, err = rmq.Channel.QueueDeclare(
-		"submissions", // name
-		false,         // durable
-		false,         // delete when unused
-		false,         // exclusive
-		false,         // no-wait
-		nil,           // arguments
+		n,     // name
+		false, // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	FailOnError(err, "Failed to declare a queue")
+	err = rmq.Channel.QueueBind(
+		rmq.Queue.Name,
+		n,
+		"submissions",
+		false,
+		nil)
+	FailOnError(err, "Failed to bind the queue")
+}
+
+func (rmq *RabbitMQ) SetConsumer(k string) <-chan amqp.Delivery {
+	channel, err := rmq.Channel.Consume(
+		k,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil)
+	FailOnError(err, "Failed to register a consumer")
+	return channel
 }
