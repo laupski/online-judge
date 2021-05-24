@@ -6,7 +6,7 @@ services:
       - "5432:5432"
   api:
     image: online-judge-web
-    command: ["./scripts/wait-for-it.sh", "database:5432", "messaging:5672", "--", "online-judge", "api", "start"]
+    command: [ "./scripts/wait-for-it.sh", "database:5432", "messaging:5672", "kv:6379", "--", "online-judge", "api", "start" ]
     ports:
       - "1337:1337"
     depends_on:
@@ -14,7 +14,7 @@ services:
       - messaging
   judge:
     image: online-judge-web
-    command: ["./scripts/wait-for-it.sh", "messaging:5672", "--", "online-judge", "judge", "start"]
+    command: [ "./scripts/wait-for-it.sh", "messaging:5672", "--", "online-judge", "judge", "start" ]
     depends_on:
       - messaging
   pgadmin:
@@ -31,3 +31,7 @@ services:
     ports:
       - "15672:15672"
       - "5672:5672"
+  kv:
+    image: online-judge-redis
+    port:
+      - "6379:6379"

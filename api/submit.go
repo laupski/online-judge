@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/laupski/online-judge/internal"
-	"github.com/streadway/amqp"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"time"
 )
 
 type SubmissionRequest struct {
@@ -19,67 +16,31 @@ type SubmissionRequest struct {
 }
 
 type SubmissionResponse struct {
-	StdOut  string `json:"stdout"`
-	StdErr  string `json:"stderr"`
-	Correct bool   `json:"correct"`
-	Error   string `json:"error"`
+	Submitted    bool   `json:"submitted"`
+	SubmissionID string `json:"submission_id"`
+	Error        string `json:"error"`
 }
 
 var supportedLanguages = []string{"go"}
 
 func postSubmission(c *gin.Context) {
-	fmt.Println("Routing submission...")
-	_ = c.Param("question")
+	fmt.Println("Submitting code...")
+	//_ = c.Param("question")
 	bodyBytes, _ := ioutil.ReadAll(c.Request.Body)
 	_, err := CheckJSONSubmissionRequest(bodyBytes)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, NewSubmissionResponse("", "", err.Error()))
+		c.JSON(http.StatusBadRequest, NewSubmitResponse(false, "", err.Error()))
 		return
 	}
 
-	corrId := randomString(32)
-	err = RabbitMQ.Channel.Publish(
-		"submissions", // exchange
-		"requests",    // routing key
-		false,         // mandatory
-		false,         // immediate
-		amqp.Publishing{
-			ContentType:   "application/json",
-			CorrelationId: corrId,
-			ReplyTo:       "responses",
-			Body:          bodyBytes,
-		})
-	internal.FailOnError(err, "Failed to publish a message")
-
-	// Create a timeout to prevent hanging resources
-	c1 := make(chan bool, 1)
-	go func() {
-		for d := range CompiledResults {
-			if corrId == d.CorrelationId {
-				fmt.Println("Successfully received an answer from the Judge server!")
-				//fmt.Println(d.Body)
-				var response SubmissionResponse
-				_ = json.Unmarshal(d.Body, &response)
-				c.JSON(http.StatusOK, response)
-				err = d.Ack(false)
-				if err != nil {
-					fmt.Println(err)
-				}
-				c1 <- true
-			}
-		}
-	}()
-	select {
-	case <-c1:
-		return
-	case <-time.After(internal.Timeout * time.Second):
-		c.JSON(http.StatusInternalServerError, SubmissionResponse{
-			StdOut:  "",
-			StdErr:  "",
-			Correct: false,
-			Error:   "timeout"})
+	submissionId := randomString(32)
+	err = RabbitMQ.PublishMessage(submissionId, bodyBytes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, NewSubmitResponse(false, "", "could not submit response"))
 		return
 	}
+
+	c.JSON(http.StatusOK, NewSubmitResponse(true, submissionId, ""))
 }
 
 func CheckJSONSubmissionRequest(bodyBytes []byte) (SubmissionRequest, error) {
@@ -108,18 +69,12 @@ func CheckJSONSubmissionRequest(bodyBytes []byte) (SubmissionRequest, error) {
 	return submission, nil
 }
 
-func NewSubmissionResponse(stdout string, stderr string, err string) SubmissionResponse {
+func NewSubmitResponse(submitted bool, submission_id string, error string) SubmissionResponse {
 	return SubmissionResponse{
-		stdout,
-		stderr,
-		false,
-		err,
+		submitted,
+		submission_id,
+		error,
 	}
-}
-
-// Check redis then postgres for the answer
-func checkAnswer(key, output string) bool {
-	return false
 }
 
 func randomString(l int) string {

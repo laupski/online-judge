@@ -4,6 +4,7 @@ build:
 	docker build ./database -t online-judge-database
 	docker build . -t online-judge-web
 	docker build ./messaging -t online-judge-messaging
+	docker build ./kv -t online-judge-redis
 
 clean:
 	-docker stop online-judge-database
@@ -26,6 +27,14 @@ rabbitmq:
 judge-rce:
 	docker build . -t online-judge-web
 	docker run --rm -d --name online-judge-rce online-judge-web online-judge judge local
+
+api:
+	docker build . -t online-judge-web
+	docker run --rm -d --name online-judge-api online-judge-web online-judge api local
+
+redis:
+	docker build ./kv -t online-judge-redis
+	docker run --rm -d --name online-judge-redis -p 6379:6379 online-judge-redis
 
 debug:
 	go build -gcflags="all=-N -l"

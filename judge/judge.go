@@ -3,16 +3,19 @@ package judge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis"
 	"github.com/laupski/online-judge/internal"
 	"github.com/streadway/amqp"
 	"log"
 	"os"
+	"time"
 )
 
 const sandboxDirectory = "./sandbox/"
 
 var RabbitMQ internal.RabbitMQ
 var Deliveries <-chan amqp.Delivery
+var Redis *redis.Client
 
 func init() {
 	if _, err := os.Stat(sandboxDirectory); os.IsNotExist(err) {
@@ -31,33 +34,26 @@ func StartJudge(local bool) {
 	defer RabbitMQ.Connection.Close()
 	RabbitMQ.CreateSubmissionChannel()
 	defer RabbitMQ.Channel.Close()
-	RabbitMQ.DeclareAndBindQueue("responses")
+	RabbitMQ.DeclareAndBindQueue("requests")
 	Deliveries = RabbitMQ.SetConsumer("requests")
+	Redis = internal.NewRedis(local)
+	defer Redis.Close()
 
-	//TODO figure out why the channel keeps closing after processing
 	forever := make(chan bool)
 	go func() {
 		for d := range Deliveries {
 			log.Printf("Received a message: %s", d.Body)
 			response := compileSubmission(d.Body)
-			bodyBytes, _ := json.Marshal(response)
+			jsonResponse, _ := json.Marshal(response)
 			err := d.Ack(false)
 			if err != nil {
 				fmt.Println(err)
 			}
-			err = RabbitMQ.Channel.Publish(
-				"submissions", // exchange
-				"responses",   // routing key
-				false,         // mandatory
-				false,         // immediate
-				amqp.Publishing{
-					ContentType:   "application/json",
-					CorrelationId: d.CorrelationId,
-					Body:          bodyBytes,
-					//ReplyTo:       "responses",
-				})
-			internal.FailOnError(err, "Failed to publish a message")
 
+			err = Redis.Set(d.CorrelationId, jsonResponse, 2*internal.Timeout*time.Second).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}()
 

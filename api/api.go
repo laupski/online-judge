@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis"
 	"github.com/jackc/pgx/v4"
 	"github.com/laupski/online-judge/internal"
-	"github.com/streadway/amqp"
 	"log"
 	"math/rand"
 	"net/http"
@@ -18,7 +18,7 @@ const postgres = "postgres://postgres:postgres@database:5432/online-judge"
 
 var PostgresConnection *pgx.Conn
 var RabbitMQ internal.RabbitMQ
-var CompiledResults <-chan amqp.Delivery
+var Redis *redis.Client
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -32,7 +32,8 @@ func StartAPI(local bool) {
 	RabbitMQ.CreateSubmissionChannel()
 	defer RabbitMQ.Channel.Close()
 	RabbitMQ.DeclareAndBindQueue("requests")
-	CompiledResults = RabbitMQ.SetConsumer("responses")
+	Redis = internal.NewRedis(local)
+	defer Redis.Close()
 
 	router := gin.Default()
 	router.Use(static.Serve("/", static.LocalFile("./frontend/public", true)))
@@ -49,6 +50,9 @@ func StartAPI(local bool) {
 	})
 	router.POST("/api/submit/:key", func(c *gin.Context) {
 		postSubmission(c)
+	})
+	router.GET("/api/check/:key", func(c *gin.Context) {
+		checkSubmission(c)
 	})
 
 	api := &http.Server{

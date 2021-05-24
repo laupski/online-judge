@@ -85,3 +85,17 @@ func (rmq *RabbitMQ) SetConsumer(k string) <-chan amqp.Delivery {
 	FailOnError(err, "Failed to register a consumer")
 	return channel
 }
+
+func (rmq *RabbitMQ) PublishMessage(c string, b []byte) error {
+	return rmq.Channel.Publish(
+		"submissions", // exchange
+		"requests",    // routing key
+		false,         // mandatory
+		false,         // immediate
+		amqp.Publishing{
+			ContentType:   "application/json",
+			CorrelationId: c,
+			//ReplyTo:       "responses",
+			Body: b,
+		})
+}
