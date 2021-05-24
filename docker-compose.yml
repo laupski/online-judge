@@ -12,11 +12,13 @@ services:
     depends_on:
       - database
       - messaging
+      - kv
   judge:
     image: online-judge-web
     command: [ "./scripts/wait-for-it.sh", "messaging:5672", "--", "online-judge", "judge", "start" ]
     depends_on:
       - messaging
+      - kv
   pgadmin:
     image: dpage/pgadmin4
     ports:
@@ -33,5 +35,5 @@ services:
       - "5672:5672"
   kv:
     image: online-judge-redis
-    port:
+    ports:
       - "6379:6379"

@@ -10,6 +10,10 @@ clean:
 	-docker stop online-judge-database
 	-docker stop pgadmin
 	-docker stop online-judge-messaging
+	-docker stop online-judge-rabbitmq
+	-docker stop online-judge-redis
+	-docker stop online-judge-rce
+	-docker stop online-judge-api
 
 pgadmin:
 	# Open up http://127.0.0.1:5433 to access pgAdmin
